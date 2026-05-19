@@ -8,9 +8,9 @@ app.use(cors());
 app.use(express.json());
 
 // ─── Invidious API instances ───
-// Only inv.thepixora.com has api:true and cors:true
 const INVIDIOUS_INSTANCES = [
   'https://inv.thepixora.com',
+  'https://yt.chocolatemoo53.com',
 ];
 
 // Dynamically fetch and cache working instances with API enabled
@@ -30,21 +30,21 @@ async function getInstances() {
     });
     if (res.ok) {
       const data = await res.json();
-      // Only pick instances with API enabled
       const working = data
         .filter(([_, info]) =>
           info.type === 'https' &&
-          info.api === true &&
           info.monitor?.uptime > 80 &&
           !info.monitor?.down
         )
         .map(([_, info]) => info.uri);
 
       if (working.length > 0) {
-        cachedInstances = working;
+        // Merge with our verified instances to guarantee at least those are present
+        const merged = [...new Set([...working, ...INVIDIOUS_INSTANCES])];
+        cachedInstances = merged;
         lastInstanceFetch = now;
-        console.log(`[Invidious] Fetched ${working.length} API-enabled instances: ${working.join(', ')}`);
-        return working;
+        console.log(`[Invidious] Fetched ${working.length} instances, merged to ${merged.length} active instances.`);
+        return merged;
       }
     }
   } catch (e) {

@@ -2,9 +2,14 @@
   "name": "musicflow",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev",
     "start": "echo Start backend first: npm run dev, then frontend: npm run frontend"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "cors": "^2.8.5"
   }
 }
