@@ -135,14 +135,60 @@ function mapToTrack(item) {
   };
 }
 
+async function universalSearch(query) {
+  // 1. Try yt-search
+  try {
+    const searchResult = await ytSearch(query);
+    if (searchResult && searchResult.videos && searchResult.videos.length > 0) {
+      return searchResult.videos.map(v => ({ ...v, type: 'video' }));
+    }
+  } catch (e) {
+    console.log('[Universal Search] yt-search failed:', e.message);
+  }
+
+  // 2. Try Piped APIs
+  try {
+    const pipedInstances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.lunar.icu'];
+    for (const instance of pipedInstances) {
+      try {
+        const pipedUrl = `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
+        const res = await fetch(pipedUrl, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.items && data.items.length > 0) {
+            return data.items.map(item => ({
+              type: 'video',
+              videoId: item.url.replace('/watch?v=', ''),
+              title: item.title,
+              author: { name: item.uploaderName },
+              seconds: item.duration,
+              views: item.views || 0
+            }));
+          }
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
+
+  // 3. Try Invidious API
+  try {
+    const data = await fetchWithFallback(`/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`);
+    if (data && data.length > 0) return data;
+  } catch (e) {
+    console.log('[Universal Search] Invidious API failed:', e.message);
+  }
+
+  throw new Error('All search methods failed');
+}
+
 // ─── Search music ───
 app.get('/api/search', async (req, res) => {
   try {
     const q = req.query.q;
     if (!q) return res.status(400).json({ error: 'Missing query' });
 
-    const searchResult = await ytSearch(q);
-    const items = (searchResult.videos || [])
+    const rawItems = await universalSearch(q);
+    const items = rawItems
       .filter(item => item.type === 'video' && isMusicContent(item))
       .slice(0, 25)
       .map(mapToTrack);
@@ -165,8 +211,8 @@ app.get('/api/trending', async (req, res) => {
     ];
     const query = popularQueries[Math.floor(Math.random() * popularQueries.length)];
 
-    const searchResult = await ytSearch(query);
-    const items = (searchResult.videos || [])
+    const rawItems = await universalSearch(query);
+    const items = rawItems
       .filter(item => item.type === 'video' && isMusicContent(item))
       .slice(0, 20)
       .map(mapToTrack);
