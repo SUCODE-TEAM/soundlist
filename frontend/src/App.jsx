@@ -795,7 +795,7 @@ function App() {
             <span className="material-symbols-rounded">keyboard_arrow_down</span>
           </button>
           <span className="mfp-header-title">Now Playing</span>
-          <button className="btn-icon" onClick={() => { setQueueOpen(p => !p); setMobilePlayerOpen(false); }}>
+          <button className="btn-icon" onClick={() => { setQueueOpen(p => !p); }}>
             <span className="material-symbols-rounded">queue_music</span>
           </button>
         </div>
@@ -821,7 +821,7 @@ function App() {
               {currentTrack && isFavorite(currentTrack.id) ? 'favorite' : 'favorite_border'}
             </span>
           </button>
-          <button className={`btn-icon${lyricsOpen ? ' active' : ''}`} onClick={() => { setLyricsOpen(p => !p); setMobilePlayerOpen(false); }}>
+          <button className={`btn-icon${lyricsOpen ? ' active' : ''}`} onClick={() => { setLyricsOpen(p => !p); }}>
             <span className="material-symbols-rounded">lyrics</span>
           </button>
         </div>
@@ -861,10 +861,10 @@ function App() {
         </div>
 
         <div className="mfp-bottom-actions">
-          <button className={`btn-icon${lyricsOpen ? ' active' : ''}`} onClick={() => { setLyricsOpen(p => !p); setMobilePlayerOpen(false); }}>
+          <button className={`btn-icon${lyricsOpen ? ' active' : ''}`} onClick={() => { setLyricsOpen(p => !p); }}>
             <span className="material-symbols-rounded">lyrics</span>
           </button>
-          <button className={`btn-icon${queueOpen ? ' active' : ''}`} onClick={() => { setQueueOpen(p => !p); setMobilePlayerOpen(false); }}>
+          <button className={`btn-icon${queueOpen ? ' active' : ''}`} onClick={() => { setQueueOpen(p => !p); }}>
             <span className="material-symbols-rounded">queue_music</span>
           </button>
         </div>

@@ -1190,7 +1190,7 @@ img { display: block; }
     width: 100% !important;
     max-height: 100vh;
     border-radius: 0;
-    z-index: 350;
+    z-index: 500;
     bottom: 0;
     top: 0;
   }
@@ -1204,7 +1204,7 @@ img { display: block; }
     width: 100% !important;
     max-height: 70vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    z-index: 350;
+    z-index: 500;
   }
 
   .page-greeting { font-size: 22px; }
