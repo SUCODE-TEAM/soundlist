@@ -76,11 +76,10 @@ export async function searchMusic(query) {
     console.warn('Backend search failed, using client-side fallback', err);
   }
 
-  // Client-side fallback — append "music" to improve relevance
+  // Client-side fallback
   try {
-    const musicQuery = query.toLowerCase().includes('music') ? query : `${query} music`;
     const data = await fetchFromClientFallback(
-      `/api/v1/search?q=${encodeURIComponent(musicQuery)}&type=video&sort_by=relevance`
+      `/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`
     );
     return (data || [])
       .filter(item => item.type === 'video' && isMusicContent(item))
@@ -299,4 +298,123 @@ export function getSavedVolume() {
 
 export function saveVolume(vol) {
   localStorage.setItem(STORAGE_KEYS.VOLUME, vol.toString());
+}
+
+// ─── Client Auth & Party APIs ───
+
+function getHeaders() {
+  const token = localStorage.getItem('musicflow_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+}
+
+export async function registerUser(username, name, password) {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, name, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Registration failed');
+  localStorage.setItem('musicflow_token', data.token);
+  return data;
+}
+
+export async function loginUser(username, password) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Login failed');
+  localStorage.setItem('musicflow_token', data.token);
+  return data;
+}
+
+export async function oauthUser(provider, providerId, name, username, avatar) {
+  const res = await fetch(`${API_BASE}/auth/oauth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, providerId, name, username, avatar })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Authentication failed');
+  localStorage.setItem('musicflow_token', data.token);
+  return data;
+}
+
+export async function getCurrentUser() {
+  const token = localStorage.getItem('musicflow_token');
+  if (!token) return null;
+  
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: getHeaders()
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.user;
+    }
+  } catch {
+    // Ignore error, token might be invalid
+  }
+  return null;
+}
+
+export async function logoutUser() {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: getHeaders()
+    });
+  } catch {
+    // Ignore errors
+  }
+  localStorage.removeItem('musicflow_token');
+}
+
+export async function createParty() {
+  const res = await fetch(`${API_BASE}/party/create`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to create room');
+  return data.partyId;
+}
+
+export async function joinParty(partyId) {
+  const res = await fetch(`${API_BASE}/party/join`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ partyId })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to join room');
+  return data.party;
+}
+
+export async function syncParty(partyId, playbackState, isHost) {
+  const res = await fetch(`${API_BASE}/party/sync`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ partyId, playbackState, isHost })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to sync');
+  return data;
+}
+
+export async function sendPartyChatMessage(partyId, message) {
+  const res = await fetch(`${API_BASE}/party/chat`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ partyId, message })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to send message');
+  return data.chatMsg;
 }

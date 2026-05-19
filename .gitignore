@@ -22,7 +22,6 @@ out/
 *.sw?
 
 # Local env files
-.env
 .env.local
 .env.development.local
 .env.test.local
@@ -36,3 +35,7 @@ pnpm-debug.log*
 
 # Vercel
 .vercel
+
+# Databases
+db.json
+backend/db.json
