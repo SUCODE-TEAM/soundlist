@@ -260,10 +260,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n  🎵 MusicFlow Backend running at http://localhost:${PORT}\n`);
-  // Pre-fetch instances on startup
-  getInstances().then(instances => {
-    console.log(`  📡 ${instances.length} Invidious instances available\n`);
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`\n  🎵 MusicFlow Backend running at http://localhost:${PORT}\n`);
+    getInstances().then(instances => {
+      console.log(`  📡 ${instances.length} Invidious instances available\n`);
+    });
   });
-});
+}
+
+export default app;
