@@ -12,6 +12,7 @@ import {
   registerUser, loginUser, oauthUser, getCurrentUser, logoutUser,
   createParty, joinParty, syncParty, sendPartyChatMessage
 } from './api';
+import { signInWithSocial } from './firebase';
 
 function App() {
   // ─── Navigation ───
@@ -98,15 +99,22 @@ function App() {
     setAuthLoading(true);
     setAuthError('');
     try {
-      const providerId = Math.random().toString(36).substring(2, 10);
-      const name = provider.toUpperCase() + ' User ' + providerId.substring(0, 3);
-      const username = `${provider}_${providerId}`;
-      const res = await oauthUser(provider, providerId, name, username, `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`);
+      const fbUser = await signInWithSocial(provider);
+      const res = await oauthUser(
+        provider,
+        fbUser.uid,
+        fbUser.displayName || `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
+        `${provider}_${fbUser.uid.substring(0,6)}`,
+        fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fbUser.displayName || 'U')}`
+      );
       setUser(res.user);
       setAuthModalOpen(false);
       showToast(`Signed in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
     } catch (err) {
-      setAuthError(err.message);
+      console.error(err);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setAuthError(err.message || 'Social login failed');
+      }
     } finally {
       setAuthLoading(false);
     }
