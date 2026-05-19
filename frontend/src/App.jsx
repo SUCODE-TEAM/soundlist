@@ -1471,7 +1471,7 @@ function App() {
         <div className="modal-overlay" onClick={() => setAuthModalOpen(false)}>
           <div className="modal-content auth-modal" onClick={e => e.stopPropagation()}>
             <div className="auth-modal-header">
-              <h2>{authTab === 'login' ? 'Welcome Back' : authTab === 'register' ? 'Create Account' : 'Guest Access'}</h2>
+              <h2>{authTab === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
               <button className="btn-icon" onClick={() => setAuthModalOpen(false)}>
                 <span className="material-symbols-rounded">close</span>
               </button>
@@ -1487,64 +1487,45 @@ function App() {
             <div className="auth-tabs">
               <button className={`auth-tab-btn ${authTab === 'login' ? 'active' : ''}`} onClick={() => { setAuthTab('login'); setAuthError(''); }}>Log In</button>
               <button className={`auth-tab-btn ${authTab === 'register' ? 'active' : ''}`} onClick={() => { setAuthTab('register'); setAuthError(''); }}>Sign Up</button>
-              <button className={`auth-tab-btn ${authTab === 'guest' ? 'active' : ''}`} onClick={() => { setAuthTab('guest'); setAuthError(''); }}>Guest Access</button>
             </div>
 
-            {authTab !== 'guest' ? (
-              <form onSubmit={handleLocalAuth} className="auth-form">
+            <form onSubmit={handleLocalAuth} className="auth-form">
+              <div className="form-group">
+                <label>Username (Unique identifier)</label>
+                <input 
+                  type="text" 
+                  placeholder="Enter unique username" 
+                  value={authForm.username} 
+                  onChange={e => setAuthForm(prev => ({ ...prev, username: e.target.value }))}
+                  required
+                />
+              </div>
+              {authTab === 'register' && (
                 <div className="form-group">
-                  <label>Username (Unique identifier)</label>
+                  <label>Display Name (Shown to others)</label>
                   <input 
                     type="text" 
-                    placeholder="Enter unique username" 
-                    value={authForm.username} 
-                    onChange={e => setAuthForm(prev => ({ ...prev, username: e.target.value }))}
+                    placeholder="Enter display name" 
+                    value={authForm.name} 
+                    onChange={e => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
                     required
                   />
                 </div>
-                {authTab === 'register' && (
-                  <div className="form-group">
-                    <label>Display Name (Shown to others)</label>
-                    <input 
-                      type="text" 
-                      placeholder="Enter display name" 
-                      value={authForm.name} 
-                      onChange={e => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
-                      required
-                    />
-                  </div>
-                )}
-                <div className="form-group">
-                  <label>Password</label>
-                  <input 
-                    type="password" 
-                    placeholder="Enter password" 
-                    value={authForm.password} 
-                    onChange={e => setAuthForm(prev => ({ ...prev, password: e.target.value }))}
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn-primary auth-submit-btn" disabled={authLoading}>
-                  {authLoading ? 'Please wait...' : authTab === 'login' ? 'Log In' : 'Sign Up'}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleGuestAuth} className="auth-form">
-                <div className="form-group">
-                  <label>Guest Username</label>
-                  <input 
-                    type="text" 
-                    placeholder="Choose a guest nickname" 
-                    value={guestUsernameInput} 
-                    onChange={e => setGuestUsernameInput(e.target.value)}
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn-primary auth-submit-btn" disabled={authLoading}>
-                  {authLoading ? 'Please wait...' : 'Enter as Guest'}
-                </button>
-              </form>
-            )}
+              )}
+              <div className="form-group">
+                <label>Password</label>
+                <input 
+                  type="password" 
+                  placeholder="Enter password" 
+                  value={authForm.password} 
+                  onChange={e => setAuthForm(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                />
+              </div>
+              <button type="submit" className="btn-primary auth-submit-btn" disabled={authLoading}>
+                {authLoading ? 'Please wait...' : authTab === 'login' ? 'Log In' : 'Sign Up'}
+              </button>
+            </form>
 
             <div className="auth-divider">
               <span>Or connect with</span>
