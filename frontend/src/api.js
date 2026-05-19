@@ -1,53 +1,172 @@
 const API_BASE = '/api';
 
+const CLIENT_INVIDIOUS_INSTANCES = [
+  'https://inv.thepixora.com',
+  'https://yt.chocolatemoo53.com',
+];
+
+async function fetchFromClientFallback(path) {
+  for (const instance of CLIENT_INVIDIOUS_INSTANCES) {
+    try {
+      const url = `${instance}${path}`;
+      console.log(`[Client Fallback Try] ${url}`);
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.log(`[Client Fallback] ${instance} failed:`, e.message);
+    }
+  }
+  throw new Error('All client fallback instances failed');
+}
+
 export async function searchMusic(query) {
-  const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
-  if (!res.ok) throw new Error('Search failed');
-  const data = await res.json();
-  return data.results || [];
+  try {
+    const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        return data.results;
+      }
+    }
+  } catch (err) {
+    console.warn('Backend search failed, using client-side fallback', err);
+  }
+
+  // Client-side fallback
+  try {
+    const data = await fetchFromClientFallback(
+      `/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`
+    );
+    return (data || [])
+      .filter(item => item.type === 'video' && item.lengthSeconds < 600)
+      .slice(0, 25)
+      .map(item => ({
+        id: item.videoId || '',
+        title: item.title || 'Unknown',
+        artist: (item.author || 'Unknown').replace(' - Topic', ''),
+        thumbnail: item.videoThumbnails?.[0]?.url ||
+          `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+        duration: item.lengthSeconds || 0,
+        views: item.viewCount || 0,
+      }));
+  } catch (e) {
+    console.error('All search options failed:', e);
+    throw new Error('Search failed');
+  }
 }
 
 export async function getTrending(region = 'ID') {
-  const res = await fetch(`${API_BASE}/trending?region=${region}`);
-  if (!res.ok) throw new Error('Trending failed');
-  const data = await res.json();
-  return data.results || [];
+  try {
+    const res = await fetch(`${API_BASE}/trending?region=${region}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        return data.results;
+      }
+    }
+  } catch (err) {
+    console.warn('Backend trending failed, using client-side fallback', err);
+  }
+
+  // Client-side fallback: try trending first, then search popular
+  try {
+    let data;
+    try {
+      data = await fetchFromClientFallback(`/api/v1/trending?type=Music&region=${region}`);
+    } catch {
+      // Fallback to popular music query
+      const popularQueries = [
+        'top hits 2026 music',
+        'trending music indonesia',
+        'popular songs 2026',
+        'lagu hits terbaru',
+      ];
+      const query = popularQueries[Math.floor(Math.random() * popularQueries.length)];
+      data = await fetchFromClientFallback(
+        `/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`
+      );
+    }
+
+    return (data || [])
+      .filter(item => (item.type === 'video' || item.videoId) && item.lengthSeconds < 600)
+      .slice(0, 20)
+      .map(item => ({
+        id: item.videoId || '',
+        title: item.title || 'Unknown',
+        artist: (item.author || 'Unknown').replace(' - Topic', ''),
+        thumbnail: item.videoThumbnails?.[0]?.url ||
+          `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+        duration: item.lengthSeconds || 0,
+        views: item.viewCount || 0,
+      }));
+  } catch (e) {
+    console.error('All trending options failed:', e);
+    throw new Error('Trending failed');
+  }
 }
 
 export async function getStreamUrl(videoId) {
-  const res = await fetch(`${API_BASE}/stream/${videoId}`);
-  if (!res.ok) throw new Error('Stream failed');
-  return await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/stream/${videoId}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('Backend stream failed, using local/YT-Iframe setup only', err);
+  }
+  return { audioStreams: [], hls: null };
 }
 
 export async function getLyrics(title, artist) {
-  const cleanTitle = title
-    .replace(/\(.*?\)/g, '')
-    .replace(/\[.*?\]/g, '')
-    .replace(/official.*?video/gi, '')
-    .replace(/lyric.*?video/gi, '')
-    .replace(/music.*?video/gi, '')
-    .replace(/ft\.?.*$/i, '')
-    .replace(/feat\.?.*$/i, '')
-    .trim();
+  try {
+    const cleanTitle = title
+      .replace(/\(.*?\)/g, '')
+      .replace(/\[.*?\]/g, '')
+      .replace(/official.*?video/gi, '')
+      .replace(/lyric.*?video/gi, '')
+      .replace(/music.*?video/gi, '')
+      .replace(/ft\.?.*$/i, '')
+      .replace(/feat\.?.*$/i, '')
+      .trim();
 
-  const cleanArtist = artist
-    .replace(/ - Topic$/, '')
-    .replace(/VEVO$/i, '')
-    .trim();
+    const cleanArtist = artist
+      .replace(/ - Topic$/, '')
+      .replace(/VEVO$/i, '')
+      .trim();
 
-  const res = await fetch(
-    `${API_BASE}/lyrics?title=${encodeURIComponent(cleanTitle)}&artist=${encodeURIComponent(cleanArtist)}`
-  );
-  if (!res.ok) throw new Error('Lyrics failed');
-  return await res.json();
+    const res = await fetch(
+      `${API_BASE}/lyrics?title=${encodeURIComponent(cleanTitle)}&artist=${encodeURIComponent(cleanArtist)}`
+    );
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('Backend lyrics failed', err);
+  }
+  return { found: false };
 }
 
 export async function getSuggestions(query) {
-  const res = await fetch(`${API_BASE}/suggestions?q=${encodeURIComponent(query)}`);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.suggestions || [];
+  try {
+    const res = await fetch(`${API_BASE}/suggestions?q=${encodeURIComponent(query)}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.suggestions || [];
+    }
+  } catch {}
+
+  try {
+    const data = await fetchFromClientFallback(
+      `/api/v1/search/suggestions?q=${encodeURIComponent(query)}`
+    );
+    return data.suggestions || [];
+  } catch {
+    return [];
+  }
 }
 
 export function formatDuration(seconds) {
