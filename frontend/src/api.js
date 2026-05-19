@@ -237,23 +237,37 @@ const STORAGE_KEYS = {
   VOLUME: 'musicflow_volume',
 };
 
+// Always normalize thumbnail to YouTube CDN (fixes broken Invidious-hosted URLs)
+function fixThumbnail(track) {
+  if (!track || !track.id) return track;
+  if (!track.thumbnail || !track.thumbnail.startsWith('https://i.ytimg.com/')) {
+    track.thumbnail = `https://i.ytimg.com/vi/${track.id}/hqdefault.jpg`;
+  }
+  return track;
+}
+
+function sanitizeTracks(tracks) {
+  return (tracks || []).map(fixThumbnail);
+}
+
 export function getFavorites() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.FAVORITES) || '[]');
+    return sanitizeTracks(JSON.parse(localStorage.getItem(STORAGE_KEYS.FAVORITES) || '[]'));
   } catch { return []; }
 }
 
 export function saveFavorites(favorites) {
-  localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
+  localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(sanitizeTracks(favorites)));
 }
 
 export function toggleFavorite(track) {
+  const fixed = fixThumbnail({ ...track });
   const favs = getFavorites();
-  const idx = favs.findIndex(f => f.id === track.id);
+  const idx = favs.findIndex(f => f.id === fixed.id);
   if (idx >= 0) {
     favs.splice(idx, 1);
   } else {
-    favs.unshift(track);
+    favs.unshift(fixed);
   }
   saveFavorites(favs);
   return favs;
@@ -265,14 +279,15 @@ export function isFavorite(trackId) {
 
 export function getHistory() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]');
+    return sanitizeTracks(JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]'));
   } catch { return []; }
 }
 
 export function addToHistory(track) {
+  const fixed = fixThumbnail({ ...track });
   let history = getHistory();
-  history = history.filter(h => h.id !== track.id);
-  history.unshift(track);
+  history = history.filter(h => h.id !== fixed.id);
+  history.unshift(fixed);
   if (history.length > 50) history = history.slice(0, 50);
   localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
   return history;
