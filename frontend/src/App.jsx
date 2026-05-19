@@ -15,6 +15,7 @@ function App() {
   // ─── Navigation ───
   const [page, setPage] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobilePlayerOpen, setMobilePlayerOpen] = useState(false);
 
   // ─── Home ───
   const [trending, setTrending] = useState([]);
@@ -739,6 +740,134 @@ function App() {
         {toasts.map(t => (
           <div key={t.id} className="toast">{t.msg}</div>
         ))}
+      </div>
+
+      {/* ─── MOBILE: Now Playing Mini Bar ─── */}
+      <div className="mobile-now-playing" onClick={() => currentTrack && setMobilePlayerOpen(true)}>
+        <div className="mobile-np-progress">
+          <div className="mobile-np-progress-fill" style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
+        </div>
+        {currentTrack?.thumbnail ? (
+          <img className="mobile-np-art" src={currentTrack.thumbnail} alt="" />
+        ) : (
+          <div className="mobile-np-placeholder">
+            <span className="material-symbols-rounded">music_note</span>
+          </div>
+        )}
+        <div className="mobile-np-info">
+          <div className="mobile-np-title">{currentTrack?.title || 'Not Playing'}</div>
+          <div className="mobile-np-artist">{currentTrack?.artist || 'Select a song'}</div>
+        </div>
+        <div className="mobile-np-controls" onClick={e => e.stopPropagation()}>
+          <button className="btn-icon" onClick={handlePlayPause}>
+            <span className="material-symbols-rounded">{isPlaying ? 'pause' : 'play_arrow'}</span>
+          </button>
+          <button className="btn-icon" onClick={handleNext}>
+            <span className="material-symbols-rounded">skip_next</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── MOBILE: Bottom Navigation ─── */}
+      <div className="mobile-bottom-nav">
+        <div className="mobile-nav-items">
+          {[
+            { id: 'home', icon: 'home', label: 'Home' },
+            { id: 'search', icon: 'search', label: 'Search' },
+            { id: 'library', icon: 'favorite', label: 'Library' },
+          ].map(item => (
+            <button
+              key={item.id}
+              className={`mobile-nav-item${page === item.id ? ' active' : ''}`}
+              onClick={() => { setPage(item.id); setSidebarOpen(false); }}
+            >
+              <span className="material-symbols-rounded">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── MOBILE: Full-Screen Player ─── */}
+      <div className={`mobile-fullplayer${mobilePlayerOpen ? ' open' : ''}`}>
+        <div className="mfp-header">
+          <button className="btn-icon mfp-close" onClick={() => setMobilePlayerOpen(false)}>
+            <span className="material-symbols-rounded">keyboard_arrow_down</span>
+          </button>
+          <span className="mfp-header-title">Now Playing</span>
+          <button className="btn-icon" onClick={() => { setQueueOpen(p => !p); }}>
+            <span className="material-symbols-rounded">queue_music</span>
+          </button>
+        </div>
+
+        <div className="mfp-art-wrap">
+          {currentTrack?.thumbnail ? (
+            <img className="mfp-art" src={currentTrack.thumbnail} alt="" />
+          ) : (
+            <div className="mfp-art-placeholder">
+              <span className="material-symbols-rounded">music_note</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mfp-info">
+          <div className="mfp-title">{currentTrack?.title || 'Not Playing'}</div>
+          <div className="mfp-artist">{currentTrack?.artist || ''}</div>
+        </div>
+
+        <div className="mfp-actions">
+          <button className={`btn-icon${currentTrack && isFavorite(currentTrack.id) ? ' active' : ''}`} onClick={handleToggleFav}>
+            <span className="material-symbols-rounded">
+              {currentTrack && isFavorite(currentTrack.id) ? 'favorite' : 'favorite_border'}
+            </span>
+          </button>
+          <button className={`btn-icon${lyricsOpen ? ' active' : ''}`} onClick={() => setLyricsOpen(p => !p)}>
+            <span className="material-symbols-rounded">lyrics</span>
+          </button>
+        </div>
+
+        <div className="mfp-progress">
+          <div className="progress-track" onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            handleSeek(pct * duration);
+          }}>
+            <div className="progress-fill" style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}>
+              <div className="progress-thumb" />
+            </div>
+          </div>
+          <div className="mfp-times">
+            <span>{formatDuration(currentTime)}</span>
+            <span>{formatDuration(duration)}</span>
+          </div>
+        </div>
+
+        <div className="mfp-controls">
+          <button className={`btn-icon${shuffle ? ' active' : ''}`} onClick={() => setShuffle(p => !p)}>
+            <span className="material-symbols-rounded">shuffle</span>
+          </button>
+          <button className="btn-icon" onClick={handlePrev}>
+            <span className="material-symbols-rounded">skip_previous</span>
+          </button>
+          <button className="btn-icon mfp-play-btn" onClick={handlePlayPause}>
+            <span className="material-symbols-rounded">{isPlaying ? 'pause' : 'play_arrow'}</span>
+          </button>
+          <button className="btn-icon" onClick={handleNext}>
+            <span className="material-symbols-rounded">skip_next</span>
+          </button>
+          <button className={`btn-icon${repeat ? ' active' : ''}`} onClick={handleToggleRepeat}>
+            <span className="material-symbols-rounded">{repeat === 'one' ? 'repeat_one' : 'repeat'}</span>
+          </button>
+        </div>
+
+        <div className="mfp-bottom-actions">
+          <button className={`btn-icon${lyricsOpen ? ' active' : ''}`} onClick={() => setLyricsOpen(p => !p)}>
+            <span className="material-symbols-rounded">lyrics</span>
+          </button>
+          <button className={`btn-icon${queueOpen ? ' active' : ''}`} onClick={() => setQueueOpen(p => !p)}>
+            <span className="material-symbols-rounded">queue_music</span>
+          </button>
+        </div>
       </div>
     </>
   );
