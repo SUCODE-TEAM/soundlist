@@ -79,28 +79,58 @@ async function fetchWithFallback(path, instances = null) {
   throw new Error('All instances failed');
 }
 
+// ─── Filter: only real music content ───
+const NON_MUSIC_KEYWORDS = [
+  '#shorts', 'shorts', 'short',
+  'live stream', 'livestream', 'streaming live',
+  'podcast', 'full album', 'full ep',
+  'compilation', 'megamix', 'nonstop',
+  'reaction', 'react to', 'reacting',
+  'behind the scene', 'interview', 'unboxing',
+  'tutorial', 'how to', 'diy',
+  'gameplay', 'gaming', 'playthrough',
+  'asmr', 'mukbang',
+  'vlog', 'daily vlog',
+  'trailer', 'teaser',
+];
+
+function isMusicContent(item) {
+  const duration = item.lengthSeconds || 0;
+  if (duration < 60 || duration > 600) return false;
+  if (item.liveNow || item.isUpcoming) return false;
+  const title = (item.title || '').toLowerCase();
+  for (const kw of NON_MUSIC_KEYWORDS) {
+    if (title.includes(kw)) return false;
+  }
+  return true;
+}
+
+function mapToTrack(item) {
+  return {
+    id: item.videoId || '',
+    title: item.title || 'Unknown',
+    artist: (item.author || 'Unknown').replace(' - Topic', ''),
+    thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+    duration: item.lengthSeconds || 0,
+    views: item.viewCount || 0,
+  };
+}
+
 // ─── Search music ───
 app.get('/api/search', async (req, res) => {
   try {
     const q = req.query.q;
     if (!q) return res.status(400).json({ error: 'Missing query' });
 
-    // Use Invidious search API
+    const musicQ = q.toLowerCase().includes('music') ? q : `${q} music`;
     const data = await fetchWithFallback(
-      `/api/v1/search?q=${encodeURIComponent(q)}&type=video&sort_by=relevance`
+      `/api/v1/search?q=${encodeURIComponent(musicQ)}&type=video&sort_by=relevance`
     );
 
     const items = (data || [])
-      .filter(item => item.type === 'video' && item.lengthSeconds < 600)
+      .filter(item => item.type === 'video' && isMusicContent(item))
       .slice(0, 25)
-      .map(item => ({
-        id: item.videoId || '',
-        title: item.title || 'Unknown',
-        artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
-        duration: item.lengthSeconds || 0,
-        views: item.viewCount || 0,
-      }));
+      .map(mapToTrack);
 
     res.json({ results: items });
   } catch (err) {
@@ -121,16 +151,9 @@ app.get('/api/trending', async (req, res) => {
       );
 
       const items = (data || [])
-        .filter(item => item.lengthSeconds && item.lengthSeconds < 600)
+        .filter(item => isMusicContent(item))
         .slice(0, 20)
-        .map(item => ({
-          id: item.videoId || '',
-          title: item.title || 'Unknown',
-          artist: (item.author || 'Unknown').replace(' - Topic', ''),
-          thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
-          duration: item.lengthSeconds || 0,
-          views: item.viewCount || 0,
-        }));
+        .map(mapToTrack);
 
       if (items.length > 0) {
         return res.json({ results: items });
@@ -141,10 +164,10 @@ app.get('/api/trending', async (req, res) => {
 
     // Fallback: search for popular music
     const popularQueries = [
-      'top hits 2026 music',
-      'trending music indonesia',
-      'popular songs 2026',
-      'lagu hits terbaru',
+      'lagu terbaru 2026 official audio',
+      'top hits indonesia music video',
+      'trending lagu indonesia terbaru',
+      'lagu pop indonesia terbaru official',
     ];
     const query = popularQueries[Math.floor(Math.random() * popularQueries.length)];
 
@@ -153,16 +176,9 @@ app.get('/api/trending', async (req, res) => {
     );
 
     const items = (data || [])
-      .filter(item => item.type === 'video' && item.lengthSeconds > 60 && item.lengthSeconds < 600)
+      .filter(item => item.type === 'video' && isMusicContent(item))
       .slice(0, 20)
-      .map(item => ({
-        id: item.videoId || '',
-        title: item.title || 'Unknown',
-        artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
-        duration: item.lengthSeconds || 0,
-        views: item.viewCount || 0,
-      }));
+      .map(mapToTrack);
 
     res.json({ results: items });
   } catch (err) {

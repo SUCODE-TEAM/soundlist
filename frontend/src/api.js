@@ -5,6 +5,35 @@ const CLIENT_INVIDIOUS_INSTANCES = [
   'https://yt.chocolatemoo53.com',
 ];
 
+// ─── Filter: only real music content ───
+const NON_MUSIC_KEYWORDS = [
+  '#shorts', 'shorts', 'short',
+  'live stream', 'livestream', 'streaming live',
+  'podcast', 'full album', 'full ep',
+  'compilation', 'megamix', 'nonstop',
+  'reaction', 'react to', 'reacting',
+  'behind the scene', 'interview', 'unboxing',
+  'tutorial', 'how to', 'diy',
+  'gameplay', 'gaming', 'playthrough',
+  'asmr', 'mukbang',
+  'vlog', 'daily vlog',
+  'trailer', 'teaser',
+];
+
+function isMusicContent(item) {
+  const duration = item.lengthSeconds || item.duration || 0;
+  // Reject: too short (<60s = likely Shorts) or too long (>10min = likely not a song)
+  if (duration < 60 || duration > 600) return false;
+  // Reject: live streams
+  if (item.liveNow || item.isUpcoming) return false;
+  // Reject: non-music titles
+  const title = (item.title || '').toLowerCase();
+  for (const keyword of NON_MUSIC_KEYWORDS) {
+    if (title.includes(keyword)) return false;
+  }
+  return true;
+}
+
 async function fetchFromClientFallback(path) {
   for (const instance of CLIENT_INVIDIOUS_INSTANCES) {
     try {
@@ -23,6 +52,17 @@ async function fetchFromClientFallback(path) {
   throw new Error('All client fallback instances failed');
 }
 
+function mapToTrack(item) {
+  return {
+    id: item.videoId || '',
+    title: item.title || 'Unknown',
+    artist: (item.author || 'Unknown').replace(' - Topic', ''),
+    thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+    duration: item.lengthSeconds || 0,
+    views: item.viewCount || 0,
+  };
+}
+
 export async function searchMusic(query) {
   try {
     const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
@@ -36,22 +76,16 @@ export async function searchMusic(query) {
     console.warn('Backend search failed, using client-side fallback', err);
   }
 
-  // Client-side fallback
+  // Client-side fallback — append "music" to improve relevance
   try {
+    const musicQuery = query.toLowerCase().includes('music') ? query : `${query} music`;
     const data = await fetchFromClientFallback(
-      `/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`
+      `/api/v1/search?q=${encodeURIComponent(musicQuery)}&type=video&sort_by=relevance`
     );
     return (data || [])
-      .filter(item => item.type === 'video' && item.lengthSeconds < 600)
+      .filter(item => item.type === 'video' && isMusicContent(item))
       .slice(0, 25)
-      .map(item => ({
-        id: item.videoId || '',
-        title: item.title || 'Unknown',
-        artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
-        duration: item.lengthSeconds || 0,
-        views: item.viewCount || 0,
-      }));
+      .map(mapToTrack);
   } catch (e) {
     console.error('All search options failed:', e);
     throw new Error('Search failed');
@@ -77,12 +111,11 @@ export async function getTrending(region = 'ID') {
     try {
       data = await fetchFromClientFallback(`/api/v1/trending?type=Music&region=${region}`);
     } catch {
-      // Fallback to popular music query
       const popularQueries = [
-        'top hits 2026 music',
-        'trending music indonesia',
-        'popular songs 2026',
-        'lagu hits terbaru',
+        'lagu terbaru 2026 official audio',
+        'top hits indonesia music video',
+        'trending lagu indonesia terbaru',
+        'lagu pop indonesia terbaru official',
       ];
       const query = popularQueries[Math.floor(Math.random() * popularQueries.length)];
       data = await fetchFromClientFallback(
@@ -91,16 +124,9 @@ export async function getTrending(region = 'ID') {
     }
 
     return (data || [])
-      .filter(item => (item.type === 'video' || item.videoId) && item.lengthSeconds < 600)
+      .filter(item => (item.type === 'video' || item.videoId) && isMusicContent(item))
       .slice(0, 20)
-      .map(item => ({
-        id: item.videoId || '',
-        title: item.title || 'Unknown',
-        artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
-        duration: item.lengthSeconds || 0,
-        views: item.viewCount || 0,
-      }));
+      .map(mapToTrack);
   } catch (e) {
     console.error('All trending options failed:', e);
     throw new Error('Trending failed');
