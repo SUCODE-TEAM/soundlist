@@ -97,8 +97,7 @@ app.get('/api/search', async (req, res) => {
         id: item.videoId || '',
         title: item.title || 'Unknown',
         artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: item.videoThumbnails?.[0]?.url ||
-          `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
         duration: item.lengthSeconds || 0,
         views: item.viewCount || 0,
       }));
@@ -128,8 +127,7 @@ app.get('/api/trending', async (req, res) => {
           id: item.videoId || '',
           title: item.title || 'Unknown',
           artist: (item.author || 'Unknown').replace(' - Topic', ''),
-          thumbnail: item.videoThumbnails?.[0]?.url ||
-            `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+          thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
           duration: item.lengthSeconds || 0,
           views: item.viewCount || 0,
         }));
@@ -161,8 +159,7 @@ app.get('/api/trending', async (req, res) => {
         id: item.videoId || '',
         title: item.title || 'Unknown',
         artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: item.videoThumbnails?.[0]?.url ||
-          `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
         duration: item.lengthSeconds || 0,
         views: item.viewCount || 0,
       }));

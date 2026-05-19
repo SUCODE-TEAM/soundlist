@@ -48,8 +48,7 @@ export async function searchMusic(query) {
         id: item.videoId || '',
         title: item.title || 'Unknown',
         artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: item.videoThumbnails?.[0]?.url ||
-          `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
         duration: item.lengthSeconds || 0,
         views: item.viewCount || 0,
       }));
@@ -98,8 +97,7 @@ export async function getTrending(region = 'ID') {
         id: item.videoId || '',
         title: item.title || 'Unknown',
         artist: (item.author || 'Unknown').replace(' - Topic', ''),
-        thumbnail: item.videoThumbnails?.[0]?.url ||
-          `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+        thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
         duration: item.lengthSeconds || 0,
         views: item.viewCount || 0,
       }));
