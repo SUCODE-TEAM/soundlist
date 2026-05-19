@@ -1,0 +1,10 @@
+{
+  "name": "musicflow",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "start": "echo Start backend first: npm run dev, then frontend: npm run frontend"
+  }
+}
