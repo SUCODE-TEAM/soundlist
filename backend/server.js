@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
+import ytSearch from 'yt-search';
 import {
   initDb,
   findUserByUsername,
@@ -112,7 +113,7 @@ const NON_MUSIC_KEYWORDS = [
 ];
 
 function isMusicContent(item) {
-  const duration = item.lengthSeconds || 0;
+  const duration = item.seconds || item.lengthSeconds || (item.duration ? item.duration.seconds : 0) || 0;
   if (duration < 60 || duration > 600) return false;
   if (item.liveNow || item.isUpcoming) return false;
   const title = (item.title || '').toLowerCase();
@@ -123,13 +124,14 @@ function isMusicContent(item) {
 }
 
 function mapToTrack(item) {
+  const authorName = item.author?.name || item.author || 'Unknown';
   return {
     id: item.videoId || '',
     title: item.title || 'Unknown',
-    artist: (item.author || 'Unknown').replace(' - Topic', ''),
+    artist: authorName.replace(' - Topic', ''),
     thumbnail: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
-    duration: item.lengthSeconds || 0,
-    views: item.viewCount || 0,
+    duration: item.seconds || item.lengthSeconds || (item.duration ? item.duration.seconds : 0) || 0,
+    views: item.views || item.viewCount || 0,
   };
 }
 
@@ -139,11 +141,8 @@ app.get('/api/search', async (req, res) => {
     const q = req.query.q;
     if (!q) return res.status(400).json({ error: 'Missing query' });
 
-    const data = await fetchWithFallback(
-      `/api/v1/search?q=${encodeURIComponent(q)}&type=video&sort_by=relevance`
-    );
-
-    const items = (data || [])
+    const searchResult = await ytSearch(q);
+    const items = (searchResult.videos || [])
       .filter(item => item.type === 'video' && isMusicContent(item))
       .slice(0, 25)
       .map(mapToTrack);
@@ -158,40 +157,16 @@ app.get('/api/search', async (req, res) => {
 // ─── Trending music ───
 app.get('/api/trending', async (req, res) => {
   try {
-    const region = req.query.region || 'ID';
-
-    // Try trending API first
-    try {
-      const data = await fetchWithFallback(
-        `/api/v1/trending?type=Music&region=${region}`
-      );
-
-      const items = (data || [])
-        .filter(item => isMusicContent(item))
-        .slice(0, 20)
-        .map(mapToTrack);
-
-      if (items.length > 0) {
-        return res.json({ results: items });
-      }
-    } catch (e) {
-      console.log('[Trending] Trending API failed, falling back to search');
-    }
-
-    // Fallback: search for popular music
     const popularQueries = [
-      'lagu terbaru 2026 official audio',
+      'lagu terbaru indonesia official audio',
       'top hits indonesia music video',
       'trending lagu indonesia terbaru',
       'lagu pop indonesia terbaru official',
     ];
     const query = popularQueries[Math.floor(Math.random() * popularQueries.length)];
 
-    const data = await fetchWithFallback(
-      `/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`
-    );
-
-    const items = (data || [])
+    const searchResult = await ytSearch(query);
+    const items = (searchResult.videos || [])
       .filter(item => item.type === 'video' && isMusicContent(item))
       .slice(0, 20)
       .map(mapToTrack);

@@ -37,7 +37,19 @@ function App() {
   // Load current user on startup
   useEffect(() => {
     getCurrentUser().then(u => {
-      if (u) setUser(u);
+      if (u) {
+        setUser(u);
+        const activeParty = localStorage.getItem('active_party_id');
+        if (activeParty) {
+          joinParty(activeParty).then(p => {
+            setParty(p);
+            setIsPartyHost(p.hostId === u.username || p.hostId === u.userId || p.hostId === u.id);
+            setPage('party');
+          }).catch(() => {
+            localStorage.removeItem('active_party_id');
+          });
+        }
+      }
     });
   }, []);
 
@@ -146,6 +158,7 @@ function App() {
       const p = await joinParty(code);
       setParty(p);
       setIsPartyHost(true);
+      localStorage.setItem('active_party_id', p.partyId);
       setPage('party');
       showToast(`Party room ${code} created!`);
     } catch (err) {
@@ -168,6 +181,7 @@ function App() {
       const p = await joinParty(code);
       setParty(p);
       setIsPartyHost(p.hostId === user?.username || p.hostId === user?.userId || p.hostId === user?.id);
+      localStorage.setItem('active_party_id', p.partyId);
       setPage('party');
       setPartyCodeInput('');
       showToast(`Joined party room ${code}!`);
@@ -181,6 +195,7 @@ function App() {
     try {
       setParty(null);
       setIsPartyHost(false);
+      localStorage.removeItem('active_party_id');
       showToast('Left party room');
     } catch (err) {
       console.error(err);
@@ -778,8 +793,19 @@ function App() {
       console.warn('SSE connection disconnected or reconnecting...', err);
     };
 
+    // Listen to fallback syncs from the heartbeat loop
+    const onFallbackSync = (e) => {
+      if (!active) return;
+      try {
+        const data = { type: 'sync', party: e.detail };
+        eventSource.onmessage({ data: JSON.stringify(data) });
+      } catch {}
+    };
+    window.addEventListener('party-sync-fallback', onFallbackSync);
+
     return () => {
       active = false;
+      window.removeEventListener('party-sync-fallback', onFallbackSync);
       eventSource.close();
     };
   }, [party?.partyId, user?.userId]);
@@ -806,6 +832,9 @@ function App() {
         const updatedParty = data.party;
         setParty(updatedParty);
         setIsPartyHost(data.hostId === user?.username || data.hostId === user?.userId || data.hostId === user?.id);
+        
+        // Dispatch fallback sync event for the SSE useEffect to pick up
+        window.dispatchEvent(new CustomEvent('party-sync-fallback', { detail: updatedParty }));
       } catch (err) {
         console.error('Heartbeat sync failed:', err);
       }
